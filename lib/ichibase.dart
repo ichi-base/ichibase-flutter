@@ -19,5 +19,6 @@ export 'src/http.dart' show IchibaseError, IchibaseResponse;
 export 'src/auth.dart' show Auth, Session, AuthEvent;
 export 'src/postgrest.dart' show Postgrest, PostgrestQueryBuilder;
 export 'src/mongo.dart' show Mongo, MongoCollection;
+export 'src/functions.dart' show Functions;
 export 'src/realtime.dart' show RealtimeClient, Subscription;
 export 'src/session_storage.dart' show SessionStore, MemorySessionStore;

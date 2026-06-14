@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'auth.dart';
+import 'functions.dart';
 import 'http.dart';
 import 'mongo.dart';
 import 'postgrest.dart';
@@ -105,6 +106,13 @@ class Ichibase {
   }
 
   RealtimeClient get realtime => _realtime ??= RealtimeClient(url, _bearer);
+
+  /// Invoke your deployed Edge Functions: `ichi.functions.invoke('name', body: {...})`.
+  Functions get functions {
+    final f = Functions(url, _anonKey, _http);
+    final s = _session;
+    return s != null ? f.asUser(s.accessToken) : f;
+  }
 
   // ── Session ────────────────────────────────────────────────────────
   Session? get session => _session;

@@ -40,6 +40,7 @@ void main() {
     final c = createClient('https://x.ichibase.net', 'ich_pub_abc');
     expect(c.mongo, isA<Mongo>());
     expect(c.realtime, isA<RealtimeClient>());
+    expect(c.functions, isA<Functions>());
     c.dispose();
   });
 }
