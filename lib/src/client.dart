@@ -34,7 +34,12 @@ class Ichibase {
   final String url;
 
   final String _anonKey;
-  final http.Client _http;
+  // _rawHttp: used by Auth (its /refresh must not recurse through the refresher).
+  // _http: a wrapper that auto-refreshes the JWT + retries once on a 401 — used
+  // by all data modules (Postgrest / Mongo / Functions).
+  final http.Client _rawHttp;
+  late final http.Client _http;
+  Future<bool>? _refreshing; // single-flight token refresh
   final SessionStore _store;
   final String _storageKey;
   Session? _session;
@@ -53,7 +58,7 @@ class Ichibase {
     String storageKey = 'ichibase.session',
   })  : url = _strip(url),
         _anonKey = anonKey,
-        _http = httpClient ?? http.Client(),
+        _rawHttp = httpClient ?? http.Client(),
         _store = store ?? defaultSessionStore(),
         _storageKey = storageKey {
     if (anonKey.isEmpty) {
@@ -65,7 +70,11 @@ class Ichibase {
         'RLS — never ship them in an app. Use them server-side instead.',
       );
     }
-    auth = Auth(this.url, _anonKey, _http, () => _session, _setSession);
+    auth = Auth(this.url, _anonKey, _rawHttp, () => _session, _setSession);
+    // Data modules go through a wrapper that transparently refreshes an expired
+    // access token + retries the request once on a 401, instead of erroring.
+    _http = _RefreshingClient(
+        _rawHttp, () => _session?.accessToken, _autoRefresh);
     // Hydrate from a synchronous store (MemorySessionStore). Async adapters
     // need an explicit `await loadSession()`.
     final raw = _store.getItem(_storageKey);
@@ -203,6 +212,22 @@ class Ichibase {
     }
   }
 
+  // Refresh the access token, sharing one in-flight refresh across concurrent
+  // 401 retries. Returns true if a valid session is in place afterwards.
+  Future<bool> _autoRefresh() {
+    final existing = _refreshing;
+    if (existing != null) return existing;
+    final f = () async {
+      final r = await auth.refresh();
+      return r.ok && _session != null;
+    }();
+    _refreshing = f;
+    f.whenComplete(() {
+      if (identical(_refreshing, f)) _refreshing = null;
+    });
+    return f;
+  }
+
   /// Release resources (HTTP client, realtime socket, streams).
   void dispose() {
     _realtime?.disconnect();
@@ -233,3 +258,46 @@ Ichibase createClient(
 }) =>
     Ichibase(url, anonKey,
         httpClient: httpClient, store: store, storageKey: storageKey);
+
+/// Wraps an [http.Client] so a 401 on a request that carried the signed-in
+/// user's access token triggers a single token refresh + one retry — the SDK
+/// transparently recovers from an expired JWT instead of surfacing the error.
+/// Anon-key requests (no session) are never retried — a 401 there is a real
+/// auth failure.
+class _RefreshingClient extends http.BaseClient {
+  final http.Client _inner;
+  final String? Function() _accessToken;
+  final Future<bool> Function() _refresh;
+  _RefreshingClient(this._inner, this._accessToken, this._refresh);
+
+  @override
+  Future<http.StreamedResponse> send(http.BaseRequest request) async {
+    final res = await _inner.send(request);
+    if (res.statusCode != 401 || request is! http.Request) return res;
+    final token = _accessToken();
+    if (token == null ||
+        request.headers['Authorization'] != 'Bearer $token') {
+      return res; // anon / non-user-token request → genuine 401
+    }
+    // Buffer the body so the original 401 can still be returned if refresh fails.
+    final body = await res.stream.toBytes();
+    final ok = await _refresh();
+    final fresh = _accessToken();
+    if (!ok || fresh == null) {
+      return http.StreamedResponse(Stream.value(body), res.statusCode,
+          headers: res.headers,
+          reasonPhrase: res.reasonPhrase,
+          request: res.request);
+    }
+    final retry = http.Request(request.method, request.url)
+      ..headers.addAll(request.headers)
+      ..bodyBytes = request.bodyBytes
+      ..followRedirects = request.followRedirects
+      ..persistentConnection = request.persistentConnection;
+    retry.headers['Authorization'] = 'Bearer $fresh';
+    return _inner.send(retry);
+  }
+
+  @override
+  void close() => _inner.close();
+}
