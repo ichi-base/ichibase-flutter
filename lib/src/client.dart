@@ -8,6 +8,11 @@ import 'mongo.dart';
 import 'postgrest.dart';
 import 'realtime.dart';
 import 'session_storage.dart';
+// Picks a durable session store for the platform (file on IO, localStorage on
+// web, in-memory otherwise) so persistence works with zero developer setup.
+import 'default_store_stub.dart'
+    if (dart.library.io) 'default_store_io.dart'
+    if (dart.library.js_interop) 'default_store_web.dart';
 
 /// The single client a Flutter/Dart app uses. **Anon key only.**
 ///
@@ -49,7 +54,7 @@ class Ichibase {
   })  : url = _strip(url),
         _anonKey = anonKey,
         _http = httpClient ?? http.Client(),
-        _store = store ?? MemorySessionStore(),
+        _store = store ?? defaultSessionStore(),
         _storageKey = storageKey {
     if (anonKey.isEmpty) {
       throw ArgumentError('ichibase: anon key is required');
@@ -77,6 +82,51 @@ class Ichibase {
   }) =>
       Ichibase(url, anonKey,
           httpClient: httpClient, store: store, storageKey: storageKey);
+
+  // ── Global singleton (Supabase-style) ──────────────────────────────
+  static Ichibase? _instance;
+
+  /// The global client created by [initialize]. Use it anywhere — no
+  /// `BuildContext`, no prop-drilling. Throws if [initialize] hasn't run.
+  ///
+  /// ```dart
+  /// await Ichibase.initialize('https://abc.ichibase.net', 'ich_pub_…');
+  /// // later, anywhere:
+  /// final res = await Ichibase.instance.from('posts').select('*');
+  /// ```
+  static Ichibase get instance {
+    final i = _instance;
+    if (i == null) {
+      throw StateError(
+          'ichibase: call Ichibase.initialize(url, anonKey) before using Ichibase.instance');
+    }
+    return i;
+  }
+
+  /// Whether [initialize] has run.
+  static bool get isInitialized => _instance != null;
+
+  /// Initialize the global singleton once (e.g. in `main()`), then use
+  /// [Ichibase.instance] everywhere. Mirrors `Supabase.initialize`.
+  ///
+  /// The session is persisted automatically (a file on mobile/desktop/server,
+  /// `localStorage` on web) and rehydrated here — pass [store] only to override
+  /// that default. Calling this again replaces the singleton (the previous one
+  /// is disposed).
+  static Future<Ichibase> initialize(
+    String url,
+    String anonKey, {
+    http.Client? httpClient,
+    SessionStore? store,
+    String storageKey = 'ichibase.session',
+  }) async {
+    _instance?.dispose();
+    final client = Ichibase(url, anonKey,
+        httpClient: httpClient, store: store, storageKey: storageKey);
+    await client.loadSession();
+    _instance = client;
+    return client;
+  }
 
   String _bearer() => _session?.accessToken ?? _anonKey;
 

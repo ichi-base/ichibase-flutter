@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:ichibase/ichibase.dart';
 
-import '../ichibase_scope.dart';
 import '../widgets/result_view.dart';
 import '../widgets/section_card.dart';
 
@@ -23,7 +22,7 @@ class _DatabaseScreenState extends State<DatabaseScreen> {
   IchibaseResponse<dynamic>? _result;
   bool _busy = false;
 
-  Ichibase get _ichi => IchibaseScope.of(context).client;
+  Ichibase get _ichi => Ichibase.instance;
 
   @override
   void dispose() {

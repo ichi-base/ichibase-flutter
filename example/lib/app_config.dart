@@ -41,6 +41,12 @@ class AppConfig {
   /// Which database surface(s) to expose in the UI.
   final DbFlavor flavor;
 
+  /// The active configuration, made available without a [BuildContext] so
+  /// screens can read the chosen [flavor]/[slug] (the SDK client itself is
+  /// reached via `Ichibase.instance`). Set by [load] and [save], cleared by
+  /// [clear].
+  static AppConfig? current;
+
   /// The base URL the SDK is pointed at.
   String get url => 'https://$slug.ichibase.net';
 
@@ -57,19 +63,22 @@ class AppConfig {
     if (slug == null || slug.isEmpty || anonKey == null || anonKey.isEmpty) {
       return null;
     }
-    return AppConfig(
+    final config = AppConfig(
       slug: slug,
       anonKey: anonKey,
       flavor: DbFlavorLabel.fromStorage(prefs.getString(_kFlavor)),
     );
+    current = config;
+    return config;
   }
 
-  /// Persist this configuration.
+  /// Persist this configuration and make it the [current] one.
   Future<void> save() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_kSlug, slug);
     await prefs.setString(_kAnonKey, anonKey);
     await prefs.setString(_kFlavor, flavor.storageValue);
+    current = this;
   }
 
   /// Forget the saved configuration (used by "Change project").
@@ -78,5 +87,6 @@ class AppConfig {
     await prefs.remove(_kSlug);
     await prefs.remove(_kAnonKey);
     await prefs.remove(_kFlavor);
+    current = null;
   }
 }

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:ichibase/ichibase.dart';
 
-import '../ichibase_scope.dart';
 import '../widgets/result_view.dart';
 import '../widgets/section_card.dart';
 
@@ -24,7 +23,7 @@ class _MongoScreenState extends State<MongoScreen> {
   bool _busy = false;
 
   MongoCollection get _orders =>
-      IchibaseScope.of(context).client.mongo.collection(_collection);
+      Ichibase.instance.mongo.collection(_collection);
 
   @override
   void dispose() {

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:ichibase/ichibase.dart';
 
-import '../ichibase_scope.dart';
 import '../widgets/result_view.dart';
 import '../widgets/section_card.dart';
 
@@ -16,7 +15,7 @@ class AuthScreen extends StatefulWidget {
 }
 
 class _AuthScreenState extends State<AuthScreen> {
-  Ichibase get _ichi => IchibaseScope.of(context).client;
+  Ichibase get _ichi => Ichibase.instance;
 
   // Shared credential fields across signup/login.
   final _email = TextEditingController();
@@ -260,8 +259,8 @@ class _AuthScreenState extends State<AuthScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              'On success the session is persisted (via the SessionStore) and '
-              'every later data call runs AS this user.',
+              'On success the session is persisted automatically by the SDK '
+              'and every later data call runs AS this user.',
               style: Theme.of(context).textTheme.bodySmall,
             ),
           ],
@@ -384,9 +383,11 @@ class _AuthScreenState extends State<AuthScreen> {
         icon: Icons.lock_clock_outlined,
         title: 'Sessions persist across restarts',
         body:
-            'This example passes a SharedPreferences-backed SessionStore to '
-            'createClient() and calls loadSession() at startup. A real app '
-            'should use flutter_secure_storage for the refresh token.',
+            'Persistence is automatic: after Ichibase.initialize() in main(), '
+            'the SDK saves the session (a file on mobile/desktop, localStorage '
+            'on web) and rehydrates it on the next launch — no SessionStore '
+            'wiring. To harden the refresh token, pass a flutter_secure_storage '
+            'adapter as the optional store: argument.',
       ),
       _resultCard(),
     ]);
@@ -477,7 +478,7 @@ class _LiveAuthStatePanelState extends State<_LiveAuthStatePanel> {
 
   @override
   Widget build(BuildContext context) {
-    final ichi = IchibaseScope.of(context).client;
+    final ichi = Ichibase.instance;
     return SectionCard(
       title: 'Live auth state (onAuthStateChange)',
       child: StreamBuilder<({AuthEvent event, Session? session})>(

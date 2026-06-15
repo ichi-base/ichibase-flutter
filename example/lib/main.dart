@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:ichibase/ichibase.dart';
 
 import 'app_config.dart';
-import 'ichibase_scope.dart';
-import 'prefs_session_store.dart';
 import 'screens/config_screen.dart';
 import 'screens/home_screen.dart';
 
@@ -45,8 +43,8 @@ class IchibaseExampleApp extends StatelessWidget {
   }
 }
 
-/// Decides the first screen: if a project is configured, build the client and
-/// show [HomeScreen]; otherwise show [ConfigScreen].
+/// Decides the first screen: if a project is configured, initialize the global
+/// [Ichibase] singleton and show [HomeScreen]; otherwise show [ConfigScreen].
 class _Bootstrap extends StatefulWidget {
   const _Bootstrap();
 
@@ -55,16 +53,29 @@ class _Bootstrap extends StatefulWidget {
 }
 
 class _BootstrapState extends State<_Bootstrap> {
-  Future<AppConfig?>? _future;
+  late Future<AppConfig?> _future;
 
   @override
   void initState() {
     super.initState();
-    _future = AppConfig.load();
+    _future = _bootstrap();
+  }
+
+  /// Load the saved config (if any) and bring up the global SDK client. Session
+  /// persistence is automatic inside the SDK, so there is nothing to wire up.
+  /// Returns the config (or `null` when the app has not been set up yet).
+  Future<AppConfig?> _bootstrap() async {
+    // AppConfig.load() also sets AppConfig.current.
+    final config = await AppConfig.load();
+    if (config != null) {
+      // The SDK throws if the key is empty or an ich_admin_ (service) key.
+      await Ichibase.initialize(config.url, config.anonKey);
+    }
+    return config;
   }
 
   void _reload() {
-    setState(() => _future = AppConfig.load());
+    setState(() => _future = _bootstrap());
   }
 
   @override
@@ -77,115 +88,60 @@ class _BootstrapState extends State<_Bootstrap> {
             body: Center(child: CircularProgressIndicator()),
           );
         }
+
+        final error = snap.error;
+        if (error != null) {
+          // initialize() rejected the config (e.g. a bad/empty key).
+          return _ConfigError(error: error, onReset: _reload);
+        }
+
         final config = snap.data;
         if (config == null) {
-          // Not set up yet — show the config screen. On success it pops back
-          // here and we re-run the future to pick up the saved config.
+          // Not set up yet — show the config screen. On success it re-runs the
+          // bootstrap to pick up (and initialize with) the saved config.
           return ConfigScreen(onConfigured: _reload);
         }
-        // Configured — build the client (once) and host the app under it.
-        return _ConfiguredApp(config: config, onChangeProject: _reload);
+        // Configured and Ichibase.instance is live — host the app.
+        return HomeScreen(onChangeProject: _reload);
       },
     );
   }
 }
 
-/// Owns the [Ichibase] client for the lifetime of a configured session. Builds
-/// the client with a persistent [SessionStore], rehydrates any saved session,
-/// then installs an [IchibaseScope] over [HomeScreen].
-class _ConfiguredApp extends StatefulWidget {
-  const _ConfiguredApp({required this.config, required this.onChangeProject});
+/// Shown when [Ichibase.initialize] rejects the saved config. Clears it and
+/// returns to the setup screen.
+class _ConfigError extends StatelessWidget {
+  const _ConfigError({required this.error, required this.onReset});
 
-  final AppConfig config;
-  final VoidCallback onChangeProject;
-
-  @override
-  State<_ConfiguredApp> createState() => _ConfiguredAppState();
-}
-
-class _ConfiguredAppState extends State<_ConfiguredApp> {
-  Ichibase? _client;
-  Object? _buildError;
-  bool _loadingSession = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _build();
-  }
-
-  Future<void> _build() async {
-    try {
-      // The SDK throws if the key is empty or an ich_admin_ (service) key.
-      final client = Ichibase.createClient(
-        widget.config.url,
-        widget.config.anonKey,
-        store: PrefsSessionStore(),
-      );
-      // Rehydrate a persisted session (async store needs an explicit call).
-      await client.loadSession();
-      if (!mounted) {
-        client.dispose();
-        return;
-      }
-      setState(() {
-        _client = client;
-        _loadingSession = false;
-      });
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _buildError = e;
-        _loadingSession = false;
-      });
-    }
-  }
-
-  @override
-  void dispose() {
-    _client?.dispose();
-    super.dispose();
-  }
+  final Object error;
+  final VoidCallback onReset;
 
   @override
   Widget build(BuildContext context) {
-    if (_loadingSession) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
-    }
-
-    final error = _buildError;
-    if (error != null || _client == null) {
-      return Scaffold(
-        appBar: AppBar(title: const Text('Configuration error')),
-        body: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.error_outline, size: 48, color: kBrand),
-              const SizedBox(height: 16),
-              Text(
-                'Could not build the client:\n$error',
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 24),
-              FilledButton(
-                onPressed: () async {
-                  await AppConfig.clear();
-                  widget.onChangeProject();
-                },
-                child: const Text('Re-enter project details'),
-              ),
-            ],
-          ),
+    return Scaffold(
+      appBar: AppBar(title: const Text('Configuration error')),
+      body: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.error_outline, size: 48, color: kBrand),
+            const SizedBox(height: 16),
+            Text(
+              'Could not build the client:\n$error',
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            FilledButton(
+              onPressed: () async {
+                await AppConfig.clear();
+                onReset();
+              },
+              child: const Text('Re-enter project details'),
+            ),
+          ],
         ),
-      );
-    }
-
-    return IchibaseScope(
-      client: _client!,
-      config: widget.config,
-      child: HomeScreen(onChangeProject: widget.onChangeProject),
+      ),
     );
   }
 }

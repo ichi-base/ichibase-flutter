@@ -1,3 +1,13 @@
+## 0.2.0
+
+- Automatic session persistence — no `store` needed. The SDK now picks a durable
+  default per platform (a file on mobile/desktop/server via `dart:io`,
+  `localStorage` on web). Pass `store:` only to override.
+- `Ichibase.initialize(url, anonKey)` + `Ichibase.instance` — initialize once at
+  startup, then use the client anywhere with no `BuildContext` (Supabase-style).
+  `createClient(...)` still available for local instances.
+- Example app updated to the singleton + a full feature tour.
+
 ## 0.1.0
 
 - Initial release.

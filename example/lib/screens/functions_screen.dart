@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:ichibase/ichibase.dart';
 
-import '../ichibase_scope.dart';
 import '../widgets/result_view.dart';
 import '../widgets/section_card.dart';
 
@@ -24,7 +23,7 @@ class _FunctionsScreenState extends State<FunctionsScreen> {
   bool _busy = false;
   String? _jsonError;
 
-  Ichibase get _ichi => IchibaseScope.of(context).client;
+  Ichibase get _ichi => Ichibase.instance;
 
   @override
   void dispose() {

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:ichibase/ichibase.dart';
 
 import '../app_config.dart';
-import '../ichibase_scope.dart';
 import '../widgets/section_card.dart';
 
 /// Subscribe to live database changes and stream them into a scrolling list.
@@ -20,8 +19,7 @@ class _RealtimeScreenState extends State<RealtimeScreen> {
   Subscription? _sub;
   final List<_Event> _events = [];
 
-  bool get _isMongo =>
-      IchibaseScope.of(context).config.flavor == DbFlavor.mongo;
+  bool get _isMongo => AppConfig.current!.flavor == DbFlavor.mongo;
 
   @override
   void dispose() {
@@ -31,7 +29,7 @@ class _RealtimeScreenState extends State<RealtimeScreen> {
 
   void _start() {
     if (_sub != null) return;
-    final ichi = IchibaseScope.of(context).client;
+    final ichi = Ichibase.instance;
     final mongo = _isMongo;
     final sub = ichi.realtime.subscribe(
       kind: mongo ? 'mongo' : 'postgres',

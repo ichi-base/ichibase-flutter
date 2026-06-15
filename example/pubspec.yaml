@@ -17,7 +17,8 @@ dependencies:
   ichibase:
     path: ../
 
-  # Realistic session persistence + raw uploads to signed URLs.
+  # App config (slug / anon key / DB flavor) + raw uploads to signed URLs.
+  # Session persistence is handled automatically inside the SDK.
   shared_preferences: ^2.2.0
   http: ^1.2.0
 

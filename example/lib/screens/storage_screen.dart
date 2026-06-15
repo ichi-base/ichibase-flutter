@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:ichibase/ichibase.dart';
 
-import '../ichibase_scope.dart';
+import '../app_config.dart';
 import '../widgets/result_view.dart';
 import '../widgets/section_card.dart';
 
@@ -37,8 +37,8 @@ class _StorageScreenState extends State<StorageScreen> {
   IchibaseResponse<dynamic>? _result;
   bool _busy = false;
 
-  Ichibase get _ichi => IchibaseScope.of(context).client;
-  String get _slug => IchibaseScope.of(context).config.slug;
+  Ichibase get _ichi => Ichibase.instance;
+  String get _slug => AppConfig.current!.slug;
 
   @override
   void dispose() {

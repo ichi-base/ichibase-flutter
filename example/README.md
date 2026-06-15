@@ -11,7 +11,7 @@ against the SDK in this repo.
 
 | Screen          | SDK surface                                                                 |
 | --------------- | --------------------------------------------------------------------------- |
-| **Config**      | `Ichibase.createClient(url, anonKey, store: …)`; anon-key validation        |
+| **Config**      | `Ichibase.initialize(url, anonKey)` (global singleton); anon-key validation  |
 | **Auth**        | `signup` / `login` / `logout` / `refresh` / `getUser`, email verification (OTP + token), password reset, `onAuthStateChange`, OAuth notes |
 | **Database**    | `from('posts').select/insert/update/delete`, filters, `order`, `limit`, `rpc()`, RLS notes |
 | **MongoDB**     | `mongo.collection('orders')` `insertOne` / `find` / `updateOne` / `deleteOne` / `count` / `aggregate`, policy notes |
@@ -20,8 +20,11 @@ against the SDK in this repo.
 | **Edge Functions** | generic `functions.invoke(name, body)`                                   |
 | **Pro features**   | search (Typesense), Redis, scheduled functions, dual DB, dedicated VPS  |
 
-Persistence is real: a `SharedPreferences`-backed `SessionStore` keeps the
-session across restarts (see `lib/prefs_session_store.dart`).
+Persistence is automatic: `Ichibase.initialize()` is called once in `main()`
+and the SDK keeps the session across restarts (a file on mobile/desktop,
+`localStorage` on web). Every screen reads the client via `Ichibase.instance` —
+no `BuildContext`, no prop-drilling. App-level config (slug / anon key / DB
+flavor) is the only thing the example stores itself, via `SharedPreferences`.
 
 ## Run it
 

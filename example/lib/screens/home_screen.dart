@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:ichibase/ichibase.dart';
 
 import '../app_config.dart';
-import '../ichibase_scope.dart';
 import 'auth_screen.dart';
 import 'database_screen.dart';
 import 'functions_screen.dart';
@@ -53,8 +52,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final scope = IchibaseScope.of(context);
-    final config = scope.config;
+    final config = AppConfig.current!;
     final flavor = config.flavor;
 
     final tiles = <_Feature>[
@@ -196,18 +194,12 @@ class AuthChip extends StatefulWidget {
 }
 
 class _AuthChipState extends State<AuthChip> {
-  Session? _session;
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    // Seed from the current session; the StreamBuilder tracks changes after.
-    _session = IchibaseScope.of(context).client.session;
-  }
+  // Seed from the current session; the StreamBuilder tracks changes after.
+  final Session? _session = Ichibase.instance.session;
 
   @override
   Widget build(BuildContext context) {
-    final ichi = IchibaseScope.of(context).client;
+    final ichi = Ichibase.instance;
     return StreamBuilder<({AuthEvent event, Session? session})>(
       stream: ichi.onAuthStateChange,
       builder: (context, snap) {
