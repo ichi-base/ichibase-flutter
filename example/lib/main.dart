@@ -75,7 +75,11 @@ class _BootstrapState extends State<_Bootstrap> {
   }
 
   void _reload() {
-    setState(() => _future = _bootstrap());
+    // Block body (not `=>`): an arrow would return the assignment's value (a
+    // Future), and setState rejects a callback that returns a Future.
+    setState(() {
+      _future = _bootstrap();
+    });
   }
 
   @override
