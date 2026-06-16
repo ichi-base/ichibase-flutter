@@ -2,7 +2,7 @@ name: ichibase
 description: >-
   Official Flutter client SDK for ichibase — Postgres, MongoDB, Auth, Storage
   and Realtime. Realtime auto-pauses in the background. Anon key only.
-version: 0.3.0
+version: 0.4.0
 repository: https://github.com/AliKales/ichibase-flutter
 homepage: https://ichibase.com/docs
 topics:
