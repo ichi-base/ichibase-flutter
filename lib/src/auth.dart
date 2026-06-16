@@ -171,6 +171,13 @@ class Auth {
       _call('/password-reset/confirm',
           body: {'token': token, 'new_password': newPassword});
 
+  /// Confirm a password reset with the emailed 6-digit code (reset mode
+  /// 'otp'/'both') instead of a link token.
+  Future<IchibaseResponse<Map<String, dynamic>>> confirmPasswordResetOtp(
+          String email, String code, String newPassword) =>
+      _call('/password-reset/confirm-otp',
+          body: {'email': email, 'code': code, 'new_password': newPassword});
+
   Future<IchibaseResponse<Map<String, dynamic>>> verifyEmail(String token) =>
       _call('/verify-email', body: {'token': token});
 

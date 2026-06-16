@@ -13,6 +13,7 @@ dependencies:
   flutter:
     sdk: flutter
 
+    
   # The SDK under test, pulled from the repo root via a path dependency.
   ichibase:
     path: ../
